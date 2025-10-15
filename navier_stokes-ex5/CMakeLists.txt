@@ -21,7 +21,7 @@ IBAMR_ADD_EXAMPLE(
   EXAMPLE_GROUP
     examples
   SOURCES
-    BoussinesqForcing.cpp example.cpp
+    QSourceFunction.cpp BoussinesqForcing.cpp example.cpp
   LINK_TARGETS
     IBAMR::IBAMR2d
   INPUT_FILES
