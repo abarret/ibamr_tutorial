@@ -15,11 +15,11 @@
 #include <SAMRAI_config.h>
 
 // Local includes
-#include "QSourceFunction.h"
+#include "RSourceFunction.h"
 
 /////////////////////////////// PUBLIC ///////////////////////////////////////
 
-QSourceFunction::QSourceFunction(Pointer<CellVariable<NDIM, double> > Q_var,
+RSourceFunction::RSourceFunction(Pointer<CellVariable<NDIM, double> > Q_var,
                                  Pointer<CellVariable<NDIM, double> > R_var,
                                  Pointer<AdvDiffHierarchyIntegrator> adv_diff_hier_integrator,
                                  const double kappa)
@@ -27,22 +27,22 @@ QSourceFunction::QSourceFunction(Pointer<CellVariable<NDIM, double> > Q_var,
 {
     // intentionally blank
     return;
-} // QSourceFunction
+} // RSourceFunction
 
-QSourceFunction::~QSourceFunction()
+RSourceFunction::~RSourceFunction()
 {
     // intentionally blank
     return;
-} // ~QSourceFunction
+} // ~RSourceFunction
 
 bool
-QSourceFunction::isTimeDependent() const
+RSourceFunction::isTimeDependent() const
 {
     return true;
 } // isTimeDependent
 
 void
-QSourceFunction::setDataOnPatch(const int data_idx,
+RSourceFunction::setDataOnPatch(const int data_idx,
                                 Pointer<Variable<NDIM> > /*var*/,
                                 Pointer<Patch<NDIM> > patch,
                                 const double /*data_time*/,
@@ -59,7 +59,7 @@ QSourceFunction::setDataOnPatch(const int data_idx,
     for (CellIterator<NDIM> ci(patch->getBox()); ci; ci++)
     {
         const CellIndex<NDIM>& idx = ci();
-        (*return_data)(idx) = -1.0 * d_kappa * (*Q_data)(idx) * (1.0 - (*R_data)(idx));
+        (*return_data)(idx) = d_kappa * (*Q_data)(idx) * (1.0 - (*R_data)(idx));
     }
     return;
 } // setDataOnPatch

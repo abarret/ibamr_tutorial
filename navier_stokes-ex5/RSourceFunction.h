@@ -11,8 +11,8 @@
 //
 // ---------------------------------------------------------------------
 
-#ifndef included_QSourceFunction
-#define included_QSourceFunction
+#ifndef included_RSourceFunction
+#define included_RSourceFunction
 
 /////////////////////////////// INCLUDES /////////////////////////////////////
 
@@ -24,17 +24,17 @@
 /////////////////////////////// CLASS DEFINITION /////////////////////////////
 
 /*!
- * \brief Class QSourceFunction provides forcing for the momentum equations
+ * \brief Class RSourceFunction provides forcing for the momentum equations
  * based on the Boussinesq approximation to the variable-density incompressible
  * Navier-Stokes equations.
  */
-class QSourceFunction : public CartGridFunction
+class RSourceFunction : public CartGridFunction
 {
 public:
     /*!
      * \brief Class constructor.
      */
-    QSourceFunction(SAMRAI::tbox::Pointer<SAMRAI::pdat::CellVariable<NDIM, double> > Q_var,
+    RSourceFunction(SAMRAI::tbox::Pointer<SAMRAI::pdat::CellVariable<NDIM, double> > Q_var,
                     SAMRAI::tbox::Pointer<SAMRAI::pdat::CellVariable<NDIM, double> > R_var,
                     SAMRAI::tbox::Pointer<IBAMR::AdvDiffHierarchyIntegrator> adv_diff_hier_integrator,
                     double kappa);
@@ -42,7 +42,7 @@ public:
     /*!
      * \brief Empty destructor.
      */
-    ~QSourceFunction();
+    ~RSourceFunction();
 
     /*!
      * \name Methods to set patch data.
@@ -50,7 +50,7 @@ public:
     //\{
 
     /*!
-     * \brief Indicates whether the concrete QSourceFunction object is
+     * \brief Indicates whether the concrete RSourceFunction object is
      * time-dependent.
      */
     bool isTimeDependent() const;
@@ -75,4 +75,4 @@ private:
 
 //////////////////////////////////////////////////////////////////////////////
 
-#endif // #ifndef included_QSourceFunction
+#endif // #ifndef included_RSourceFunction

@@ -39,6 +39,8 @@
 
 // Application objects
 #include "BoussinesqForcing.h"
+#include "QSourceFunction.h"
+#include "RSourceFunction.h"
 
 /*******************************************************************************
  * For each run, the input filename and restart information (if needed) must   *
@@ -177,6 +179,30 @@ main(int argc, char* argv[])
             }
             time_integrator->registerPhysicalBoundaryConditions(u_bc_coefs);
         }
+
+        Pointer<CellVariable<NDIM, double> > Q_var = new CellVariable<NDIM, double>("Q");
+        Pointer<CellVariable<NDIM, double> > R_var = new CellVariable<NDIM, double>("R");
+        adv_diff_integrator->registerTransportedQuantity(Q_var);
+        adv_diff_integrator->registerTransportedQuantity(R_var);
+        adv_diff_integrator->setDiffusionCoefficient(Q_var, input_db->getDouble("Q_DIFF_COEF"));
+        adv_diff_integrator->setDiffusionCoefficient(R_var, input_db->getDouble("R_DIFF_COEF"));
+        adv_diff_integrator->setAdvectionVelocity(Q_var, time_integrator->getAdvectionVelocityVariable());
+        adv_diff_integrator->setAdvectionVelocity(R_var, time_integrator->getAdvectionVelocityVariable());
+
+        Pointer<CellVariable<NDIM, double> > Q_src_var = new CellVariable<NDIM, double>("Q_SRC");
+        Pointer<CellVariable<NDIM, double> > R_src_var = new CellVariable<NDIM, double>("R_SRC");
+        adv_diff_integrator->registerSourceTerm(Q_src_var);
+        adv_diff_integrator->registerSourceTerm(R_src_var);
+        adv_diff_integrator->setSourceTermFunction(
+            Q_src_var, new QSourceFunction(Q_var, R_var, adv_diff_integrator, input_db->getDouble("RATE")));
+        adv_diff_integrator->setSourceTermFunction(
+            R_src_var, new RSourceFunction(Q_var, R_var, adv_diff_integrator, input_db->getDouble("RATE")));
+        adv_diff_integrator->setSourceTerm(Q_var, Q_src_var);
+        adv_diff_integrator->setSourceTerm(R_var, R_src_var);
+        adv_diff_integrator->setInitialConditions(
+            Q_var,
+            new muParserCartGridFunction(
+                "Q_init", app_initializer->getComponentDatabase("QInitialConditions"), grid_geometry));
 
         // Set up visualization plot file writers.
         Pointer<VisItDataWriter<NDIM> > visit_data_writer = app_initializer->getVisItDataWriter();
