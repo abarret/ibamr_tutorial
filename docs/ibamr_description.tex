@@ -332,7 +332,7 @@ in which $T_0$ is the baseline temperature and $\bg$ is the force of gravity, he
 As before, we can navigate to the build directory and build the example
 \begin{verbatim}
 cd ibamr_tutorials/build && make -j4 examples
-cd navier_stokes-ex1
+cd navier_stokes-ex5
 ./main2d input2d
 \end{verbatim}
 If we look at the source code, we can see the \verb|BoussinesqForcing| source and header files as well as the main source \verb|example.cpp|. The main source code contains very similar code to that of \verb|navier-stokes_ex1|, with the addition of the \verb|AdvDiffHierarchyIntegrator| class that is registered with the fluid solver. This new integrator will integrate the temperature in equation \eqref{eq:T}.
