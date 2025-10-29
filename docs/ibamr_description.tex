@@ -165,7 +165,7 @@ With the input file modified, we can rerun the example and open the visualizatio
 \subsection{IBAMR Major Concepts}
 IBAMR borrows heavily from SAMRAI concepts, and in a lot of ways, is a application that lives on top of SAMRAI's data structures and algorithms.
 
-The \verb|PatchHierarchy<NDIM>| object manages all Eulerian data and the layout of data on the adaptive grid. It is composed of sequences of \verb|PatchLevel<NDIM>| objects that are manage data for a specific grid spacing. Each \verb|PatchLevel<NDIM>| object contains a sequence of \verb|Patch<NDIM>| objects, each of which consists of a logically rectangular box of grid cells. Data on a patch is stored according to a patch data index, which is represented by an \verb|int|. Associated patch data can be accessed from by patch by the \verb|Patch<NDIM>| member function \verb|getPatchData()|. Note that patch data can correspond to cell, side, face, edge, or node centered dataa, and must be casted to the appropriate type before use. Typically, patch data indices are retrieved using the \verb|VariableDatabase<NDIM>| object, which will map pairs of \verb|Variable| and \verb|VariableContext| to patch data indices. The typical policy of IBAMR is for \verb|Variable| objects to correspond to specific state data, while \verb|VariableContext| objects correspond to time points. For example, the following code will retrieve the current velocity patch index from an \verb|INSStaggeredHierarchyIntegrator| object
+The \verb|PatchHierarchy<NDIM>| object manages all Eulerian data and the layout of data on the adaptive grid. It is composed of sequences of \verb|PatchLevel<NDIM>| objects that are manage data for a specific grid spacing. Each \verb|PatchLevel<NDIM>| object contains a sequence of \verb|Patch<NDIM>| objects, each of which consists of a logically rectangular box of grid cells. Data on a patch is stored according to a patch data index, which is represented by an \verb|int|. Associated patch data can be accessed from the patch by the member function \verb|Patch<NDIM>::getPatchData()|. Note that patch data can correspond to cell, side, face, edge, or node centered data, and must be cast to the appropriate type before use. Typically, patch data indices are retrieved using the \verb|VariableDatabase<NDIM>| object, which will map pairs of \verb|Variable| and \verb|VariableContext| to patch data indices. The usual policy of IBAMR is for \verb|Variable| objects to correspond to specific state data, while \verb|VariableContext| objects correspond to time points. All the \verb|HierarchyIntegrator| objects store state data with a current, new, and scratch context. For example, the following code will retrieve the current velocity patch index from an \verb|INSStaggeredHierarchyIntegrator| object
 \begin{verbatim}
 auto var_db = VariableDatabase<NDIM>::getDatabase();
 Pointer<SideVariable<NDIM, double>> u_var = ins_integrator->getVelocityVariable();
@@ -269,7 +269,7 @@ The \verb|INSHierarchyIntegrator| class and derived classes generally know how t
 The computation of the body force must be done in an extension of the \verb|CartGridFunction| interface. Note the force must be evaluated in accordance with the grid spacing used for the velocity. For example, if the integrator is of type \verb|INSStaggeredHierarchyIntegrator|, the data index provided to the forcing function corresponds to type \verb|SideData<NDIM, double>|. The forcing function can be registered with the \verb|INSHierarchyIntegrator| with the call \verb|registerBodyForceFunction|. 
 
 \paragraph{Viscoelasticity:}
-Viscoelastic fluids that follow a Maxwell type model can be added via the \verb|CFINSForcing| class. It requires a derived class of type \verb|CFStrategy| be written that can compute the right hand side of the upper convective derivative and the transformation from the advected tensor to the stress tensor. Classes for Oldroyd-B, Giesekus, and Rolie-Poly already exist in IBAMR, and can be specified by the \verb|fluid_model| parameter in the input database.
+Viscoelastic fluids that follow a Maxwell type model can be added via the \verb|CFINSForcing| class. It requires a derived class of type \verb|CFStrategy| be written that can compute the right hand side of the upper convective derivative and the transformation from the advected tensor to the stress tensor. Classes for the Oldroyd-B, Giesekus, and Rolie-Poly models already exist in IBAMR, and can be specified by the \verb|fluid_model| parameter in the input database.
 
 The class \verb|CFINSForcing| is a specific implementation of a \verb|CartGridFunction| whose application of \verb|setDataOnPatchHierarchy| computes the divergence of the extra stress tensor. Therefore, to add viscoelasticity to a fluid solver, one needs to register the \verb|CFINSForcing| object with the \verb|INSHierarchyIntegrator| via the \verb|registerBodyForceFunction| function.
 
@@ -319,7 +319,7 @@ with another database for \verb|VelocityBcCoefs_1|. This boundary condition sets
 \paragraph{IBFEMethod:}
 
 \section{Navier Stokes Ex 5}
-The example \verb|navier_stokes-ex5| models stratefied layer of fluids marked by temperature differences. The Boussinesq approximation is used to compute the force of gravity on the system. The temperature of the fluid is modeled by an advection-diffusion equation
+The example \verb|navier_stokes-ex5| models stratified layer of fluids marked by temperature differences. The Boussinesq approximation is used to compute the force of gravity on the system. The temperature of the fluid is modeled by an advection-diffusion equation
 \begin{equation}\label{eq:T}
 \frac{\partial T}{\partial t} + \bu\cdot\grad T = D\Lap T,
 \end{equation}
@@ -356,7 +356,7 @@ As noted in the section on forces for the Navier-Stokes integrators, the class \
 \end{center}
 The corresponding source file \verb|BoussinesqForcing.cpp| contains two important functions, \verb|setDataOnPatchHierarchy| and \verb|setDataOnPatch|.
 
-In order to evaluate the force in equation \eqref{eq:F} on cell sides, we must interpolate the cell centered data to the side of a cell, then multiple by $-\gamma$. To do the interpolation, we require one layer of ghost cells to be filled in. The function \verb|setDataOnPatchHierarchy| allocates scratch data for \verb|T_var| (if necessary), then fills in ghost cells using the class \verb|HierarchyGhostCellInterpolation|, which contains general routines to make filling ghost cells easy. Then the function loops over levels and calls \verb|setDataOnPatchLevel|, which by default will loop over patches and call \verb|setDataOnPatch|.
+In order to evaluate the force in equation \eqref{eq:F} on cell sides, we must interpolate the cell centered data to the side of a cell, then multiply by $-\gamma$. To do the interpolation, we require one layer of ghost cells to be filled in. The function \verb|setDataOnPatchHierarchy| allocates scratch data for \verb|T_var| (if necessary), then fills in ghost cells using the class \verb|HierarchyGhostCellInterpolation|, which contains general routines to make filling ghost cells easy. Then the function loops over levels and calls \verb|setDataOnPatchLevel|, which by default will loop over patches and call \verb|setDataOnPatch|.
 
 The actual computation of the force is done in \verb|setDataOnPatch|. First, the cell data corresponding to the scratch context is retrieved from the patch. Then, we loop over all cell sides whose normal points in the $y$ direction. We interpolate the cell data to the cell side using simple averaging, and evaluate the force.
 \begin{center}
@@ -374,14 +374,14 @@ To accomplish this, we need to add two advected quantities, $Q$ and $R$, and wri
 cd ibamr_tutorial/ibamr_tutorial
 git pull && git checkout add_source
 \end{verbatim}
-In the source directory \verb|navier_stokes-ex5|, there should now be two additional files \verb|QSourceFunction.h| and \verb|QSourceFunction.cpp|. To complete the \verb|QSourceFunction| class, we need to be able to evaluate the source term in equation \eqref{eq:Q}. To evaluate this term, we need the values of $\kappa$, $Q$, and $R$. Therefore, we will need to store the patch data corresponding to $Q$ and $R$ and have a \verb|double| that corresponds to the value of $\kappa$. These will be stored as member variables of the class. We also need to update the constructor to ensure these objects are avaiable upon construction of the object
+In the source directory \verb|navier_stokes-ex5|, there should now be two additional files \verb|QSourceFunction.h| and \verb|QSourceFunction.cpp|. To complete the \verb|QSourceFunction| class, we need to be able to evaluate the source term in equation \eqref{eq:Q}. To evaluate this term, we need the values of $\kappa$, $Q$, and $R$. Therefore, we will need to store the patch data corresponding to $Q$ and $R$ and have a \verb|double| that corresponds to the value of $\kappa$. Recall that the patch data index can be retrieved with the variable and context pair. Therefore, we pass in the \verb|CellVariable| corresponding to the state of $Q$ and $R$, as well as the \verb|AdvDiffHierarchyIntegrator| object with which we can retrieve the variable context. These will be stored as member variables of the class. We also need to update the constructor to ensure these objects are avaiable upon construction of the object
 \begin{center}
 \includegraphics[width=0.8\textwidth]{Graphs/NS-ex5/add_src/header_update_constructor.png} \\
 \vspace{0.5em}
 \includegraphics[width=0.8\textwidth]{Graphs/NS-ex5/add_src/header_update_member_vars.png}
 \end{center}
 
-In the implementation file, we need to update the constructor to set the appropriate member variables. We also need to update the \verb|setDataOnPatch| function to correctly evaluate the source function. Note we do not need ghost cell information to evaluate this function. Therefore, the code that filled ghost cells in \verb|BoussinesqForcing| is not needed here.
+In the implementation file, we need to update the constructor to set the appropriate member variables. We also need to update the \verb|setDataOnPatch| function to correctly evaluate the source function. Note we do not need ghost cell information to evaluate this function. Therefore, there is no ghost filling in the function \verb|setDataOnPatchHierarchy|, and that function is not implemented. By default, the base class loops over patch levels and calls \verb|setDataOnPatchLevel|.
 \begin{center}
 \includegraphics[width=0.8\textwidth]{Graphs/NS-ex5/add_src/source_constructor.png} \\
 \vspace{0.5em}
