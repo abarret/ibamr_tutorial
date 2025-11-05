@@ -6,6 +6,10 @@ GAMMA = 1.0e2                                   // strength of temperature forci
 W     = 1.0
 H     = 2.0
 
+Q_DIFF_COEF = 1.0e-6
+R_DIFF_COEF = 1.0e-6
+RATE = 1.0
+
 // grid spacing parameters
 MAX_LEVELS = 1                                  // maximum number of levels in locally refined grid
 REF_RATIO  = 2                                  // refinement ratio between levels
@@ -77,6 +81,12 @@ VelocityBcCoefs_1 {
    gcoef_function_2 = "0.0"
    gcoef_function_3 = "0.0"
 }
+
+QInitialConditions {
+   H = H
+   function = "0.5*(tanh(80.0*(X_1-0.5*H-0.001*cos(2*PI*X_0)))+1)"
+}
+
 
 TemperatureInitialConditions {
    H = H
