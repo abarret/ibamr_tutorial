@@ -13,8 +13,7 @@
 
 #include <ibamr/CFINSForcing.h>
 #include <ibamr/IBExplicitHierarchyIntegrator.h>
-#include <ibamr/IBFEMethod.h>
-#include <ibamr/IBFESurfaceMethod.h>
+#include <ibamr/IIMethod.h>
 #include <ibamr/INSCollocatedHierarchyIntegrator.h>
 #include <ibamr/INSStaggeredHierarchyIntegrator.h>
 
@@ -240,25 +239,9 @@ main(int argc, char* argv[])
         // Create major algorithm and data objects that comprise the
         // application.  These objects are configured from the input database
         // and, if this is a restarted run, from the restart database.
-        Pointer<INSHierarchyIntegrator> navier_stokes_integrator;
-        const string solver_type = app_initializer->getComponentDatabase("Main")->getString("solver_type");
-        if (solver_type == "STAGGERED")
-        {
-            navier_stokes_integrator = new INSStaggeredHierarchyIntegrator(
+        Pointer<INSStaggeredHierarchyIntegrator> navier_stokes_integrator = new INSStaggeredHierarchyIntegrator(
                 "INSStaggeredHierarchyIntegrator",
                 app_initializer->getComponentDatabase("INSStaggeredHierarchyIntegrator"));
-        }
-        else if (solver_type == "COLLOCATED")
-        {
-            navier_stokes_integrator = new INSCollocatedHierarchyIntegrator(
-                "INSCollocatedHierarchyIntegrator",
-                app_initializer->getComponentDatabase("INSCollocatedHierarchyIntegrator"));
-        }
-        else
-        {
-            TBOX_ERROR("Unsupported solver type: " << solver_type << "\n"
-                                                   << "Valid options are: COLLOCATED, STAGGERED");
-        }
 
         // Create the advection diffusion integrator for the extra stress.
         Pointer<AdvDiffSemiImplicitHierarchyIntegrator> adv_diff_integrator;
@@ -266,15 +249,15 @@ main(int argc, char* argv[])
             "AdvDiffSemiImplicitHierarchyIntegrator",
             app_initializer->getComponentDatabase("AdvDiffSemiImplicitHierarchyIntegrator"));
         navier_stokes_integrator->registerAdvDiffHierarchyIntegrator(adv_diff_integrator);
-        Pointer<IBFESurfaceMethod> ib_method_ops =
-            new IBFESurfaceMethod("IBFESurfaceMethod",
-                                  app_initializer->getComponentDatabase("IBFESurfaceMethod"),
+        Pointer<IIMethod> ii_method_ops =
+            new IIMethod("IIMethod",
+                                  app_initializer->getComponentDatabase("IIMethod"),
                                   &mesh,
                                   app_initializer->getComponentDatabase("GriddingAlgorithm")->getInteger("max_levels"));
         Pointer<IBHierarchyIntegrator> time_integrator =
             new IBExplicitHierarchyIntegrator("IBHierarchyIntegrator",
                                               app_initializer->getComponentDatabase("IBHierarchyIntegrator"),
-                                              ib_method_ops,
+                                              ii_method_ops,
                                               navier_stokes_integrator);
         Pointer<CartesianGridGeometry<NDIM> > grid_geometry = new CartesianGridGeometry<NDIM>(
             "CartesianGeometry", app_initializer->getComponentDatabase("CartesianGeometry"));
@@ -294,13 +277,13 @@ main(int argc, char* argv[])
                                         load_balancer);
 
         // Configure the IBFE solver.
-        ib_method_ops->initializeFEEquationSystems();
+        ii_method_ops->initializeFEEquationSystems();
         std::vector<int> vars(NDIM);
         for (unsigned int d = 0; d < NDIM; ++d) vars[d] = d;
-        vector<SystemData> sys_data(1, SystemData(IBFESurfaceMethod::VELOCITY_SYSTEM_NAME, vars));
-        IBFESurfaceMethod::LagSurfaceForceFcnData body_fcn_data(tether_force_function, sys_data);
-        ib_method_ops->registerLagSurfaceForceFunction(body_fcn_data);
-        EquationSystems* equation_systems = ib_method_ops->getFEDataManager()->getEquationSystems();
+        vector<SystemData> sys_data(1, SystemData(IIMethod::VELOCITY_SYSTEM_NAME, vars));
+        IIMethod::LagSurfaceForceFcnData body_fcn_data(tether_force_function, sys_data);
+        ii_method_ops->registerLagSurfaceForceFunction(body_fcn_data);
+        EquationSystems* equation_systems = ii_method_ops->getFEDataManager()->getEquationSystems();
 
         // Create Eulerian initial condition specification objects.
         if (input_db->keyExists("VelocityInitialConditions"))
@@ -319,15 +302,8 @@ main(int argc, char* argv[])
 
         // Create Eulerian boundary condition specification objects (when necessary).
         const IntVector<NDIM>& periodic_shift = grid_geometry->getPeriodicShift();
-        vector<RobinBcCoefStrategy<NDIM>*> u_bc_coefs(NDIM);
-        if (periodic_shift.min() > 0)
-        {
-            for (unsigned int d = 0; d < NDIM; ++d)
-            {
-                u_bc_coefs[d] = nullptr;
-            }
-        }
-        else
+        vector<RobinBcCoefStrategy<NDIM>*> u_bc_coefs(NDIM, nullptr);
+        if (!(periodic_shift.min() > 0))
         {
             for (unsigned int d = 0; d < NDIM; ++d)
             {
@@ -366,9 +342,10 @@ main(int argc, char* argv[])
         double viscosity = 0.0, relaxation_time = 0.0;
         if (input_db->keyExists("ComplexFluid"))
         {
+            Pointer<INSHierarchyIntegrator> ins_integrator = navier_stokes_integrator;
             polymericStressForcing = new CFINSForcing("PolymericStressForcing",
                                                       app_initializer->getComponentDatabase("ComplexFluid"),
-                                                      navier_stokes_integrator,
+                                                      ins_integrator,
                                                       grid_geometry,
                                                       adv_diff_integrator,
                                                       visit_data_writer);
@@ -380,7 +357,7 @@ main(int argc, char* argv[])
         std::unique_ptr<ExodusII_IO> exodus_io = uses_exodus ? std::make_unique<ExodusII_IO>(mesh) : nullptr;
 
         // Initialize hierarchy configuration and data on all patches.
-        ib_method_ops->initializeFEData();
+        ii_method_ops->initializeFEData();
         time_integrator->initializePatchHierarchy(patch_hierarchy, gridding_algorithm);
 
         // Deallocate initialization objects.
@@ -472,7 +449,7 @@ main(int argc, char* argv[])
             }
             if (dump_viz_data && (iteration_num % postproc_data_dump_interval == 0 || last_step))
             {
-                postprocess_data(patch_hierarchy,
+                /*postprocess_data(patch_hierarchy,
                                  navier_stokes_integrator,
                                  adv_diff_integrator,
                                  polymericStressForcing,
@@ -482,7 +459,7 @@ main(int argc, char* argv[])
                                  equation_systems,
                                  iteration_num,
                                  loop_time,
-                                 postproc_data_dump_dirname);
+                                 postproc_data_dump_dirname);*/
             }
         }
 
@@ -543,8 +520,8 @@ postprocess_data(Pointer<PatchHierarchy<NDIM> > patch_hierarchy,
 
     for (unsigned int d = 0; d < NDIM; ++d) F_integral[d] = 0.0;
 
-    System& x_system = equation_systems->get_system(IBFESurfaceMethod::COORDS_SYSTEM_NAME);
-    System& U_system = equation_systems->get_system(IBFESurfaceMethod::VELOCITY_SYSTEM_NAME);
+    System& x_system = equation_systems->get_system(IIMethod::COORDS_SYSTEM_NAME);
+    System& U_system = equation_systems->get_system(IIMethod::VELOCITY_SYSTEM_NAME);
 
     NumericVector<double>* x_vec = x_system.solution.get();
     NumericVector<double>* x_ghost_vec = x_system.current_local_solution.get();
